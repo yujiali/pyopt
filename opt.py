@@ -4,17 +4,23 @@ package.
 
 Other optimization packages can be found in scipy.optimize.
 
+In this module iteration number starts from 1.
+
 Yujia Li, 09/2014
 """
 
 import math
+import time
+import numpy as np
+
+_DIVISION_EPS = 1e-8
 
 class ParamSchedule(object):
     """
     Gradually changing schedule for a single variable.
     """
-    def __init__(self, x_init, x_schedule_dict=None, drop_after_iters=10, 
-            freeze_after_iters=-1, decrease_type='linear'):
+    def __init__(self, x_init, x_schedule_dict=None, drop_after_iters=0, 
+            freeze_after_iters=0, decrease_type='linear'):
         """
         x: initial variable value
         x_schedule_dict: a dict of (#iter -> var_value) the user defined schedule
@@ -31,7 +37,7 @@ class ParamSchedule(object):
         self.freeze_after_iters = freeze_after_iters
         self.decrease_type = decrease_type
 
-        if self.freeze_after_iters >= 0:
+        if self.freeze_after_iters > 0:
             self.x_freeze = self._get_var_at_iter(self.freeze_after_iters)
 
     def _get_var_at_iter(self, n_iter):
@@ -61,18 +67,18 @@ class ParamSchedule(object):
         """
         Return the variable value at iteration number n_iter.
         """
-        if self.freeze_after_iters >= 0 and n_iter >= self.freeze_after_iters:
+        if self.freeze_after_iters > 0 and n_iter >= self.freeze_after_iters:
             return self.x_freeze
         else:
             return self._get_var_at_iter(n_iter)
 
-class LearningSchedule(object):
+class OptimizationSchedule(object):
     """
     This class deals with different learning rate, momentum schedules.
     """
-    def __init__(self, learn_rate=1e-2, momentum=0, learn_rate_schedule=None,
-            momentum_schedule=None, learn_rate_drop_iters=10,
-            adagrad_start_iter=-1, decrease_type='linear'):
+    def __init__(self, learn_rate, momentum, learn_rate_schedule=None,
+            momentum_schedule=None, learn_rate_drop_iters=0,
+            adagrad_start_iter=0, decrease_type='linear'):
         self.learn_rate_schedule = ParamSchedule(learn_rate, 
                 x_schedule_dict=learn_rate_schedule, 
                 drop_after_iters=learn_rate_drop_iters,
@@ -90,8 +96,24 @@ class LearningSchedule(object):
         return self.learn_rate_schedule.get_var_at_iter(n_iter), \
                 self.momentum_schedule.get_var_at_iter(n_iter)
 
+def f_and_fprime_generator(f, fprime=None, weight_decay=0):
+    if fprime is not None:
+        if weight_decay > 0:
+            return lambda z: (f(z) + 0.5 * weight_decay * (z**2).sum(), fprime(z) + weight_decay * z)
+        else:
+            return lambda z: (f(z), fprime(z))
+    else:
+        if weight_decay > 0:
+            def f_and_fprime(z):
+                y, grad = f(z)
+                return y + 0.5 * weight_decay * (z**2).sum(), grad + weight_decay * z
+            return f_and_fprime
+        else:
+            return lambda z: f(z)
+
 def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0, 
-        weight_decay=0, learn_rate_drop_iters=10, adagrad_start_iter=-1,
+        weight_decay=0, learn_rate_schedule=None, momentum_schedule=None,
+        learn_rate_drop_iters=0, decrease_type='linear', adagrad_start_iter=0,
         max_iters=1000, iprint=1, f_info=None, verbose=True):
     """
     Minimize function f using gradient descent.
@@ -102,15 +124,17 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
     fprime: fprime(x) computes the gradient of f at x. If None, gradient should
         be computed within f.
     x0: initial value of x
-    learn_rate: learning rate, can be a single number (subject to the automatic
-        schedule), or a dictionary of (#iter -> learn_rate), which is a user
-        defined schedule
-    momentum: momentum, can be a single number (fixed momentum) or a dictionary
-        of (#iter -> momentum), which is a user defined schedule
+    learn_rate: initial learning rate, a single number
+    momentum: initial momentum, a single number
     weight_decay: if > 0, a L2 term 1/2*weight_decay*x^2 will be added to 
         objective, gradients will be changed accordingly.
+    learn_rate_schedule: a dictionary of (#iter -> learn_rate), which is a user
+        defined schedule. If set, the automatic schedule won't be used
+    momentum_schedule: a dictionary of (#iter -> momentum), which is a user
+        defined schedule.
     learn_rate_drop_iters: decrease learning rate according to 1/t after every
         learn_rate_drop_iters iterations.
+    decrease_type: 'linear' for 1/t decrease, 'sqrt' for 1/sqrt(t) decrease.
     adagrad_start_iter: the iteration to start using AdaGrad.
     max_iters: maximum number of iterations
     iprint: print optimization information every iprint iterations. Nothing 
@@ -121,15 +145,56 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
 
     Return: x_opt, the x found after max_iters iterations.
     """
-    if fprime is not None:
-        f_and_fprime = lambda x: (f(x), fprime(x))
-    else:
-        f_and_fprime = lambda x: f(x)
+    f_and_fprime = f_and_fprime_generator(f, fprime, weight_decay)
 
+    opt_schedule = OptimizationSchedule(learn_rate, momentum,
+            learn_rate_schedule=learn_rate_schedule,
+            momentum_schedule=momentum_schedule,
+            learn_rate_drop_iters=learn_rate_drop_iters,
+            adagrad_start_iter=-1, decrease_type=decrease_type)
 
+    x = x0
+    x_inc = x * 0
+    x_adagrad_history = x * 0
+
+    t_start = time.time()
+    y, x_grad = f_and_fprime(x)
+    if verbose:
+        s = 'iter %5d, f=%.8f' % (0, y)
+        if f_info is not None:
+            s += ', ' + f_info(x)
+        s += ', time %.2f' % (t_start - time.time())
+        print s
+
+    t_start = time.time()
+    for i in range(max_iters):
+        i_iter = i + 1
+        learn_rate, momentum = opt_schedule.get_learn_rate_and_momentum(i_iter)
+
+        if adagrad_start_iter > 0 and i_iter >= adagrad_start_iter:
+            if i_iter == adagrad_start_iter:
+                lr_scale = np.sqrt((x_grad**2).sum())
+            x_adagrad_history += x_grad**2
+            learn_rate = learn_rate * lr_scale / (np.sqrt(x_adagrad_history) + _DIVISION_EPS)
+
+        x_inc = momentum * x_inc - learn_rate * x_grad
+        x += x_inc
+
+        y, x_grad = f_and_fprime(x)
+
+        if verbose and iprint > 0 and i_iter % iprint == 0:
+            s = 'iter %5d, f=%.8f, |x_inc|=%.8f' % (i_iter, y, np.abs(x_inc).max())
+            if f_info is not None:
+                s += ', ' + f_info(x)
+            s += ', time %.2f' % (time.time() - t_start)
+            print s
+            t_start = time.time()
+
+    return x
 
 def fmin_sgd():
     """
     Stochastic gradient descent optimization.
     """
     pass
+
