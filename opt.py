@@ -166,7 +166,7 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
         f_exe(x)
 
     if verbose:
-        s = 'iter %5d, f=%.8f' % (0, y)
+        s = 'iter %5d, f=%.8f, |x_inc|=%10s, |g|_max=%10s' % (0, y, 'N/A', 'N/A')
         if f_info is not None:
             s += ', ' + f_info(x)
         s += ', time %.2f' % (t_start - time.time())
@@ -179,7 +179,7 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
 
         if adagrad_start_iter > 0 and i_iter >= adagrad_start_iter:
             if i_iter == adagrad_start_iter:
-                lr_scale = np.sqrt((x_grad**2).sum())
+                lr_scale = np.abs(x_grad).mean()
             x_adagrad_history += x_grad**2
             learn_rate = learn_rate * lr_scale / (np.sqrt(x_adagrad_history) + _DIVISION_EPS)
 
@@ -192,7 +192,7 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
             f_exe(x)
 
         if verbose and iprint > 0 and i_iter % iprint == 0:
-            s = 'iter %5d, f=%.8f, |x_inc|=%.8f' % (i_iter, y, np.abs(x_inc).max())
+            s = 'iter %5d, f=%.8f, |x_inc|=%.8f, |g|_max=%.8f' % (i_iter, y, np.abs(x_inc).max(), np.abs(x_grad).max())
             if f_info is not None:
                 s += ', ' + f_info(x)
             s += ', time %.2f' % (time.time() - t_start)
