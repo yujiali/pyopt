@@ -169,7 +169,7 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
         s = 'iter %5d, f=%.8f, |x_inc|=%10s, |g|_max=%10s' % (0, y, 'N/A', 'N/A')
         if f_info is not None:
             s += ', ' + f_info(x)
-        s += ', time %.2f' % (t_start - time.time())
+        s += ', time %.2f' % (time.time() - t_start)
         print s
 
     t_start = time.time()
