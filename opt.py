@@ -96,7 +96,7 @@ class OptimizationSchedule(object):
         return self.learn_rate_schedule.get_var_at_iter(n_iter), \
                 self.momentum_schedule.get_var_at_iter(n_iter)
 
-def f_and_fprime_generator(f, fprime=None, weight_decay=0):
+def f_and_fprime_decorator(f, fprime=None, weight_decay=0):
     if fprime is not None:
         if weight_decay > 0:
             return lambda z: (f(z) + 0.5 * weight_decay * (z**2).sum(), fprime(z) + weight_decay * z)
@@ -150,13 +150,13 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
 
     Return: x_opt, the x found after max_iters iterations.
     """
-    f_and_fprime = f_and_fprime_generator(f, fprime, weight_decay)
+    f_and_fprime = f_and_fprime_decorator(f, fprime, weight_decay)
 
     opt_schedule = OptimizationSchedule(learn_rate, momentum,
             learn_rate_schedule=learn_rate_schedule,
             momentum_schedule=momentum_schedule,
             learn_rate_drop_iters=learn_rate_drop_iters,
-            adagrad_start_iter=-1, decrease_type=decrease_type)
+            adagrad_start_iter=adagrad_start_iter, decrease_type=decrease_type)
 
     x = x0
     x_inc = x * 0
@@ -207,10 +207,4 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
                 f_exe(i+1, x)
 
     return x
-
-def fmin_sgd():
-    """
-    Stochastic gradient descent optimization.
-    """
-    pass
 
