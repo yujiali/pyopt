@@ -114,7 +114,7 @@ def f_and_fprime_decorator(f, fprime=None, weight_decay=0):
 def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0, 
         weight_decay=0, learn_rate_schedule=None, momentum_schedule=None,
         learn_rate_drop_iters=0, decrease_type='linear', adagrad_start_iter=0,
-        max_iters=1000, iprint=1, f_info=None, i_exe=0, check_points=[], f_exe=None, verbose=True):
+        max_iters=1000, iprint=1, f_info=None, i_exe=0, check_points=None, f_exe=None, verbose=True):
     """
     Minimize function f using gradient descent.
 
