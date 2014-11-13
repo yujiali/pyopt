@@ -133,9 +133,9 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
     momentum_schedule: a dictionary of (#iter -> momentum), which is a user
         defined schedule.
     learn_rate_drop_iters: decrease learning rate according to 1/t after every
-        learn_rate_drop_iters iterations.
+        learn_rate_drop_iters iterations, if this number > 0.
     decrease_type: 'linear' for 1/t decrease, 'sqrt' for 1/sqrt(t) decrease.
-    adagrad_start_iter: the iteration to start using AdaGrad.
+    adagrad_start_iter: the iteration to start using AdaGrad, if this number > 0.
     max_iters: maximum number of iterations
     iprint: print optimization information every iprint iterations. Nothing 
         will be printed if iprint <= 0
