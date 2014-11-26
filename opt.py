@@ -191,12 +191,13 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
 
         y, x_grad = f_and_fprime(x)
 
-        if verbose and iprint > 0 and i_iter % iprint == 0:
+        if iprint > 0 and i_iter % iprint == 0:
             s = 'iter %5d, f=%.8f, |x_inc|=%.8f, |g|_max=%.8f' % (i_iter, y, np.abs(x_inc).max(), np.abs(x_grad).max())
             if f_info is not None:
                 s += ', ' + f_info(x)
             s += ', time %.2f' % (time.time() - t_start)
-            print s
+            if verbose:
+                print s
             t_start = time.time()
 
         if f_exe is not None:
