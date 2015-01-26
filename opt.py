@@ -175,7 +175,7 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
         f_exe(0, x)
 
     if verbose:
-        s = 'iter %5d, f=%.8f, |change|=%10s, |grad|=%.8f' % (0, y, 'N/A', grad_scale)
+        s = 'iter %5d, f=%.8f, |change|_max=%10s, |grad|=%.8f' % (0, y, 'N/A', grad_scale)
         if f_info is not None:
             s += ', ' + f_info(x)
         s += ', time %.2f' % (time.time() - t_start)
@@ -202,7 +202,7 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
         grad_scale = np.linalg.norm(x_grad, ord=2)
 
         if iprint > 0 and i_iter % iprint == 0:
-            s = 'iter %5d, f=%.8f, |change_max|=%.8f, |grad|=%.8f' % (i_iter, y, np.abs(x_inc).max(), grad_scale)
+            s = 'iter %5d, f=%.8f, |change|_max=%.8f, |grad|=%.8f' % (i_iter, y, np.abs(x_inc).max(), grad_scale)
             if f_info is not None:
                 s += ', ' + f_info(x)
             s += ', time %.2f' % (time.time() - t_start)
