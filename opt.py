@@ -198,6 +198,12 @@ def fmin_gradient_descent(f, x0, fprime=None, learn_rate=1e-2, momentum=0,
         x_inc = momentum * x_inc - learn_rate * x_grad
         x += x_inc
 
+        """
+        if i == 546:
+            import ipdb
+            ipdb.set_trace()
+        """
+
         y, x_grad = f_and_fprime(x)
         grad_scale = np.linalg.norm(x_grad, ord=2)
 
